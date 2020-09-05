@@ -17,9 +17,8 @@
 需要安装QT，用到了Qt5Network
  
 ## Compile and run
-
 cd ~/catkin_ws/src
-git clone 
+git clone https://github.com/Yadong-wong/receive_INS_data.git
 cd ..
 catkin_make
 source devel/setup.bash
