@@ -1,0 +1,4 @@
+<launch>
+    <!--- Transform original GNSS data -->    
+    <node pkg="receive_INS_data" type="receive_INS_data_node"    name="Transform_INS_data"    output="screen"/>
+</launch>
