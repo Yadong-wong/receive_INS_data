@@ -1,4 +1,8 @@
 <launch>
-    <!--- Transform original GNSS data -->    
+    <!--- Transform original GNSS data -->
     <node pkg="receive_INS_data" type="receive_INS_data_node"    name="Transform_INS_data"    output="screen"/>
+    <param name="SERVER_PORT" type="int" value="6060" />
+    <param name="BUFF_LEN" type="int" value="145"/>
+    <param name="FileDirectory" type="string" value="/home/agv/Desktop/AGV_ws/src/data/" />
+
 </launch>

@@ -5,9 +5,6 @@
 #ifndef SRC_TRANSFULLDATA_H
 #define SRC_TRANSFULLDATA_H
 
-#define SERVER_PORT 6060
-#define BUFF_LEN 1024
-
 #include "ros/ros.h"
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
@@ -32,7 +29,6 @@
 
 using namespace std;
 
-string stCurrentTime;
-string filename;
+//根据当前的时间生成txt文件名
 
 #endif //SRC_TRANSFULLDATA_H

@@ -10,6 +10,10 @@ private:
     geometry_msgs::PoseStamped PoseInfoFromGps;
     receive_INS_data::gsof Gsof_data;   //About ROS
 
+    int SERVER_PORT;
+    int BUFF_LEN;
+    string fileDirectory;
+
     int Satellite_Num;
     float HDOP;
     string Imu_alignment_status;
@@ -37,14 +41,28 @@ private:
     string str;
     std::ofstream outFile;
 
+    char filename[256];
+
     double GPSPosition[3];
     bool newOriginData;
 
 public:
-    TransOriginData():
-    nh("~"){
+    TransOriginData(){
+        SERVER_PORT = nh.param<int>("SERVER_PORT",6060);
+        BUFF_LEN = nh.param<int>("BUFF_LEN",145);
+        fileDirectory = nh.param<string>("FileDirectory","/tmp/");
+
         pubPoseInfoFromGps = nh.advertise<geometry_msgs::PoseStamped>("/PoseInfoFromGps",1);
         pubGsofOriginData = nh.advertise<receive_INS_data::gsof>("/OriginalGsofData",10);
+
+        //根据当前时间自动生成txt文件名
+        time_t timep;
+        struct tm *p;
+        time(&timep);//获取从1970至今过了多少秒，存入time_t类型的timep
+        p = localtime(&timep);//用localtime将秒数转化为struct tm结构体
+        sprintf(filename, "%s.%d.%d.%d %d：%02d.txt","INS_data",1900+p->tm_year,1+p->tm_mon,p->tm_mday,p->tm_hour,p->tm_min);//把格式化的时间写入字符数组中
+
+      //  cout << filename << endl;
         allocateMemory();
 
     }
@@ -100,12 +118,11 @@ public:
 
     void OriginDataCallback()
     {
-         // str = buffer.toStdString();
-          str = "0228408BC40000010A0B166D80084910BF050209103FB6CCC13F3FBCDA3F9BA4C43F55BE8C316808490B166D8003024043FE94BBFE48DC405D1646E7340AF640451ACB19BE919A3D912CBC3FB699983B985D503FB6D345BFF1082022B3F8BE3FD6C5F597715F274055C0FC255FCD4D4055C9F07DCC53D53E38A5EC3F504CCEBF0ACFDEBDD94A753DFFA7493F404E2BAB03";
+        str = buffer.toStdString();
        // cout << str << endl;
         if(str.length()==290)
         {
-            cout.precision(16);
+            cout.precision(4);
             string SVs_used = str.substr(30,2);
             Satellite_Num = convertFromString<int>(SVs_used);
             cout << "Satellite_Num = " << Satellite_Num << "  ";
@@ -186,9 +203,7 @@ public:
             Down_accleration = convertFromString<float >(down_acceleration);
 
             //将转换的数据记录到txt文件中
-            outFile.precision(16);
-
-            outFile.open(filename.c_str(),ios::app);
+            outFile.open(fileDirectory+filename,ios::app);
             if(outFile.fail()){
                 cout<<"===== Record INS_data failed =====\n";
             }
@@ -242,24 +257,21 @@ public:
 
     void handle_udp_msg(int fd)
     {
-        char buf[BUFF_LEN];  //接收缓冲区，1024字节
         socklen_t len;
         int count;
         struct sockaddr_in clent_addr;  //clent_addr用于记录发送方的地址信息
 
-        memset(buf, 0, BUFF_LEN);
         len = sizeof(clent_addr);
-        //  count = read(fd,buf,BUFF_LEN);
-        count = recvfrom(fd, buf, BUFF_LEN, 0, (struct sockaddr*)&clent_addr, &len);  //recvfrom是拥塞函数，没有数据就一直拥塞
-        data.resize(count);
-        int recv = read(fd,data.data(),count);
+        data.resize(BUFF_LEN);
+        memset(data.data(),0,BUFF_LEN);
+        count = recvfrom(fd, data.data(), BUFF_LEN, 0, (struct sockaddr*)&clent_addr, &len);  //recvfrom是拥塞函数，没有数据就一直拥塞
 
         if(count == -1)
         {
             printf("recieve data fail!\n");
             return;
         }
-        if(recv>0)
+        if(count > 0)
         {
             newOriginData = true;
             buffer = byteArrayToHexStr(data);
@@ -284,6 +296,7 @@ public:
 
 
     int recieve_UDP() {
+
         int server_fd, ret;
         struct sockaddr_in ser_addr;
         server_fd = socket(AF_INET, SOCK_DGRAM, 0); //AF_INET:IPV4;SOCK_DGRAM:UDP
@@ -312,6 +325,7 @@ public:
         Gsof_data.header.frame_id = "/base_link";
         Gsof_data.full_data = str;
         Gsof_data.Satellite_Num = Satellite_Num;
+        Gsof_data.GPS_aligned = GPS_alignment_indicator;
         Gsof_data.DOP_info = HDOP;
         Gsof_data.Imu_aligned = Imu_alignment_status;
         Gsof_data.latitude = Latitude;
@@ -371,12 +385,6 @@ public:
 int main(int argc, char* argv[]) {
 
     ros::init(argc, argv, "TransInsData");
-    //定义文件名称:"filename + time"
-    time_t currentTime=time(NULL);//注意NULL大小写
-    char chCurrentTime[256];
-    strftime(chCurrentTime,sizeof(chCurrentTime),"%Y%m%d %H%M%S",localtime(&currentTime));
-    stCurrentTime = chCurrentTime;
-    filename = "INS_data"+stCurrentTime+".txt";
 
     TransOriginData TD;
 
